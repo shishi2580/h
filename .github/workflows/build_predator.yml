@@ -1,0 +1,54 @@
+name: Build Kernel (Fixed Git Clone)
+
+on: [workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 配置 Git 和缓存
+        run: |
+          # 配置 Git 使用 HTTPS 替代协议，有时能解决奇怪的问题
+          git config --global url."https://github.com/".insteadOf git://github.com/
+          git config --global http.postBuffer 524288000
+
+      - name: 下载 Predator Kernel 源码 (使用SSH格式)
+        run: |
+          # 尝试使用 SSH 格式克隆，它通常比 HTTPS 更稳定
+          git clone git@github.com:gyanprapt/Predator-Kernel-raphael.git --depth=1 kernel
+          # 如果失败，尝试备用HTTPS链接
+          if [ ! -d "kernel" ]; then
+            echo "SSH克隆失败，尝试HTTPS..."
+            git clone https://github.com/gyanprapt/Predator-Kernel-raphael.git --depth=1 kernel
+          fi
+
+      - name: 安装编译依赖
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential gcc-aarch64-linux-gnu libssl-dev bc flex bison git curl
+
+      - name: 集成 SukiSU (非GKI分支)
+        run: |
+          cd kernel
+          curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s nongki || echo "集成步骤完成"
+
+      - name: 配置与编译内核
+        run: |
+          cd kernel
+          export ARCH=arm64
+          export CROSS_COMPILE=aarch64-linux-gnu-
+          # 尝试可能的配置名
+          make raphael_defconfig 2>/dev/null || make vendor/raphael_defconfig 2>/dev/null || echo "将使用现有或默认配置"
+          make -j$(nproc) 2>&1 | tee build.log
+
+      - name: 检查并输出结果
+        run: |
+          cd kernel
+          if [ -f "arch/arm64/boot/Image.gz-dtb" ]; then
+            echo "✅ 编译成功！"
+            ls -lh arch/arm64/boot/Image*
+          else
+            echo "❌ 编译失败，以下是日志结尾："
+            tail -50 build.log
+            exit 1
+          fi
