@@ -1,0 +1,42 @@
+name: 🚀 Build Predator Kernel for K20 Pro
+
+on: [workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 下载Predator Kernel
+      run: |
+        echo "正在下载Predator Kernel..."
+        # 这个仓库应该可以访问
+        git clone https://github.com/gyanprapt/Predator-Kernel-raphael.git --depth=1
+        cd Predator-Kernel-raphael
+        echo "Predator Kernel下载完成"
+        
+    - name: 🔧 安装工具
+      run: |
+        sudo apt update
+        sudo apt install -y \
+          build-essential \
+          gcc-aarch64-linux-gnu \
+          libssl-dev \
+          bc \
+          flex \
+          bison \
+          libelf-dev
+        
+    - name: ⚡ 集成KernelSU
+      run: |
+        cd Predator-Kernel-raphael
+        
+        echo "集成KernelSU..."
+        # 最新集成方法
+        curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
+        
+        echo "检查KSU："
+        ls drivers/kernelsu/ 2>/dev/null || echo "KSU目录不存在"
+        
+    - name: ⚙️ 配置内核
+     
