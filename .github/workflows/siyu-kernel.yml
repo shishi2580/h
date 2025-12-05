@@ -1,0 +1,46 @@
+name: 🚀 Build Siyu Kernel for K20 Pro
+
+on: [workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 下载Siyu Kernel源码
+      run: |
+        echo "正在下载Siyu Kernel（sukiu）..."
+        git clone https://github.com/yaoxiaotian/sukiu.git --depth=1
+        cd sukiu
+        echo "内核版本："
+        grep "VERSION\|PATCHLEVEL" Makefile
+        
+    - name: 🔧 安装编译工具
+      run: |
+        sudo apt update
+        sudo apt install -y \
+          build-essential \
+          gcc-aarch64-linux-gnu \
+          gcc-10-aarch64-linux-gnu \
+          libssl-dev \
+          bc \
+          flex \
+          bison \
+          libelf-dev \
+          git \
+          curl
+        
+    - name: ⚙️ 配置Siyu Kernel
+      run: |
+        cd sukiu
+        
+        export ARCH=arm64
+        export CROSS_COMPILE=aarch64-linux-gnu-
+        
+        # Siyu Kernel的配置
+        make raphael_defconfig
+        
+        echo "Siyu Kernel特性："
+        echo "- 已集成KernelSU"
+        echo "- 支持屏幕超频"
+        e
