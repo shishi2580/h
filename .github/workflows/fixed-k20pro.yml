@@ -1,0 +1,65 @@
+name: 🚀 Build K20 Pro KernelSU (Fixed)
+
+on: [workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 下载源码
+      run: |
+        git clone https://github.com/MiCode/Xiaomi_Kernel_OpenSource.git -b raphael-p-oss --depth=1 kernel
+        cd kernel
+        echo "内核版本：4.14"
+        
+    - name: 🔧 安装工具
+      run: |
+        sudo apt update
+        sudo apt install -y build-essential gcc-aarch64-linux-gnu libssl-dev bc
+        
+    - name: ⚡ 集成KernelSU（新版）
+      run: |
+        cd kernel
+        
+        # 最新方法：直接运行集成脚本
+        curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
+        
+        echo "检查KSU："
+        ls drivers/kernelsu/
+        
+    - name: ⚙️ 配置内核
+      run: |
+        cd kernel
+        export ARCH=arm64
+        export CROSS_COMPILE=aarch64-linux-gnu-
+        
+        # 使用配置
+        if [ -f "arch/arm64/configs/raphael_defconfig" ]; then
+          make raphael_defconfig
+        else
+          make defconfig
+        fi
+        
+        # 启用KSU（新版本可能叫KSU_LEGACY）
+        ./scripts/config --enable KSU 2>/dev/null || true
+        ./scripts/config --module KSU 2>/dev/null || true
+        
+    - name: 🛠️ 开始编译
+      timeout-minutes: 60
+      run: |
+        cd kernel
+        export ARCH=arm64
+        export CROSS_COMPILE=aarch64-linux-gnu-
+        
+        echo "开始编译，使用 $(nproc) 个核心..."
+        make -j$(nproc) 2>&1 | tee build.log || make -j2 2>&1 | tee build.log
+        
+        echo "编译完成！"
+        ls -lh arch/arm64/boot/
+        
+    - name: 📤 上传结果
+      uses: actions/upload-artifact@v3
+      with:
+        name: k20pro-kernel
+        path: kernel/arch/arm64/boot/Image.gz-dtb
